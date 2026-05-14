@@ -452,7 +452,7 @@ async function fetchFromSheet() {
   const key = settings.apiKey;
   if (!id || !key) { showToast('請先設定 Sheet ID 及 API Key'); return false; }
   try {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet1?key=${key}`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/%E5%B7%A5%E4%BD%9C%E8%A1%A81?key=${key}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
@@ -462,7 +462,7 @@ async function fetchFromSheet() {
       unit: r[4]||'', qc: r[5]||'', status: r[6]||'progress'
     }));
     // Fetch processes
-    const url2 = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet2?key=${key}`;
+    const url2 = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/%E5%B7%A5%E4%BD%9C%E8%A1%A82?key=${key}`;
     const res2 = await fetch(url2);
     const data2 = await res2.json();
     db.processes = (data2.values||[]).slice(1).map(r => ({
