@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MiC RFID 生產追蹤系統</title>
+<style>
+:root {
+  --blue: #1a56a0;
+  --blue-dark: #0f3870;
+  --blue-light: #e8f0fb;
+  --green: #1a7a3c;
+  --green-light: #e6f4ec;
+  --amber: #b45309;
+  --amber-light: #fef3c7;
+  --red: #b91c1c;
+  --red-light: #fee2e2;
+  --gray: #64748b;
+  --gray-light: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --white: #ffffff;
+  --radius: 10px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f0f4f8; color: var(--text); min-height: 100vh; }
+
+/* TOP BAR */
+.topbar { background: var(--blue-dark); color: white; padding: 12px 16px; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.topbar .logo { font-size: 11px; font-weight: 700; letter-spacing: 1px; opacity: 0.7; }
+.topbar h1 { font-size: 15px; font-weight: 600; flex: 1; }
+.topbar .time { font-size: 11px; opacity: 0.7; font-variant-numeric: tabular-nums; }
+.back-btn { background: rgba(255,255,255,0.15); border: none; color: white; padding: 6px 10px; border-radius: 6px; font-size: 14px; cursor: pointer; }
+
+/* SCREENS */
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* HOME */
+.home-hero { background: linear-gradient(160deg, var(--blue-dark) 0%, var(--blue) 100%); color: white; padding: 20px 16px 32px; }
+.home-hero .project { font-size: 11px; opacity: 0.7; letter-spacing: 0.5px; margin-bottom: 4px; }
+.home-hero h2 { font-size: 18px; font-weight: 700; margin-bottom: 2px; }
+.home-hero .subtitle { font-size: 12px; opacity: 0.75; }
+.im8-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 4px 10px; font-size: 11px; margin-top: 10px; }
+
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 12px; margin-top: -18px; }
+.stat-box { background: white; border-radius: 10px; padding: 12px 8px; text-align: center; box-shadow: var(--shadow); }
+.stat-num { font-size: 24px; font-weight: 700; }
+.stat-num.blue { color: var(--blue); }
+.stat-num.amber { color: var(--amber); }
+.stat-num.red { color: var(--red); }
+.stat-lbl { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+.section-hd { font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; padding: 16px 16px 6px; text-transform: uppercase; }
+
+/* SCAN BOX */
+.scan-wrap { padding: 0 12px 8px; }
+.scan-box { background: white; border: 2px dashed #93c5fd; border-radius: 12px; padding: 20px; text-align: center; cursor: pointer; }
+.scan-box .scan-icon { font-size: 40px; margin-bottom: 8px; }
+.scan-box p { font-size: 14px; font-weight: 600; color: var(--blue); }
+.scan-box small { font-size: 11px; color: var(--text-muted); }
+
+.manual-input { display: flex; gap: 8px; padding: 0 12px 8px; }
+.manual-input input { flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; background: white; }
+.manual-input input:focus { outline: none; border-color: var(--blue); }
+.manual-input button { background: var(--blue); color: white; border: none; border-radius: 8px; padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+
+/* RECENT LIST */
+.item-list { padding: 0 12px 100px; display: flex; flex-direction: column; gap: 6px; }
+.item-card { background: white; border-radius: 10px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #ccc; }
+.item-card.done { border-left-color: var(--green); }
+.item-card.progress { border-left-color: var(--amber); }
+.item-card.fail { border-left-color: var(--red); }
+.item-info { flex: 1; }
+.item-id { font-size: 13px; font-weight: 600; color: var(--text); }
+.item-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.item-badge { font-size: 10px; padding: 3px 8px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+.badge-done { background: var(--green-light); color: var(--green); }
+.badge-progress { background: var(--amber-light); color: var(--amber); }
+.badge-fail { background: var(--red-light); color: var(--red); }
+
+/* DETAIL */
+.detail-header { background: var(--blue-dark); color: white; padding: 16px; }
+.detail-header .epc { font-size: 10px; opacity: 0.6; font-family: monospace; margin-bottom: 4px; }
+.detail-header h2 { font-size: 17px; font-weight: 700; }
+.detail-header .type { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+.detail-header .overall { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.2); }
+.detail-header .overall-lbl { font-size: 11px; opacity: 0.7; }
+.overall-pass { background: #16a34a; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+.overall-progress { background: #d97706; color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+
+.info-block { background: white; margin: 10px 12px; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.info-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.info-row:last-child { border-bottom: none; }
+.info-row .lbl { color: var(--text-muted); }
+.info-row .val { font-weight: 500; text-align: right; max-width: 60%; }
+.info-row .val.green { color: var(--green); }
+.info-row .val.amber { color: var(--amber); }
+.info-row .val.blue { color: var(--blue); font-size: 11px; font-family: monospace; }
+
+/* PROCESS TIMELINE */
+.timeline { padding: 0 12px 8px; }
+.timeline-item { display: flex; gap: 12px; margin-bottom: 4px; }
+.tl-left { display: flex; flex-direction: column; align-items: center; }
+.tl-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+.tl-dot.done { background: var(--green); }
+.tl-dot.progress { background: var(--amber); }
+.tl-dot.pending { background: #cbd5e1; }
+.tl-dot.fail { background: var(--red); }
+.tl-line { width: 2px; background: var(--border); flex: 1; min-height: 8px; margin: 3px 0; }
+.tl-content { flex: 1; background: white; border-radius: 10px; padding: 10px 12px; margin-bottom: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.tl-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+.tl-meta { font-size: 11px; color: var(--text-muted); }
+.tl-meta span { display: inline-block; margin-right: 8px; }
+.tl-expand { font-size: 11px; color: var(--blue); cursor: pointer; margin-top: 4px; }
+.tl-detail { display: none; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.tl-detail.open { display: block; }
+.tl-detail-row { display: flex; justify-content: space-between; font-size: 11px; padding: 3px 0; border-bottom: 1px solid #f8fafc; }
+.tl-detail-row .k { color: var(--text-muted); }
+.tl-detail-row .v { font-weight: 500; }
+.v-pass { color: var(--green); }
+.v-fail { color: var(--red); }
+
+/* QPM SECTION */
+.qpm-card { background: white; margin: 0 12px 8px; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.qpm-header { background: var(--blue-light); padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; }
+.qpm-header span { font-size: 13px; font-weight: 600; color: var(--blue-dark); }
+.qpm-header .result { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+.qpm-result-pass { background: var(--green-light); color: var(--green); }
+.qpm-result-fail { background: var(--red-light); color: var(--red); }
+.qpm-row { display: flex; justify-content: space-between; padding: 7px 14px; font-size: 12px; border-bottom: 1px solid #f8fafc; }
+.qpm-row:last-child { border-bottom: none; }
+
+/* DOCS */
+.doc-item { background: white; margin: 0 12px 6px; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); cursor: pointer; }
+.doc-icon { font-size: 24px; }
+.doc-name { font-size: 13px; font-weight: 500; }
+.doc-meta { font-size: 11px; color: var(--text-muted); }
+
+/* SETTINGS */
+.settings-wrap { padding: 12px; padding-bottom: 100px; }
+.settings-card { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 12px; }
+.settings-card .card-title { background: var(--gray-light); padding: 8px 14px; font-size: 11px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; }
+.settings-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.settings-row:last-child { border-bottom: none; }
+.settings-row input[type=text], .settings-row input[type=url] { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; margin-left: 8px; }
+.settings-row input:focus { outline: none; border-color: var(--blue); }
+.save-btn { width: 100%; background: var(--blue); color: white; border: none; border-radius: 10px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; }
+.test-btn { background: var(--gray-light); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 12px; cursor: pointer; }
+.status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.dot-green { background: var(--green); }
+.dot-red { background: var(--red); }
+.dot-gray { background: #94a3b8; }
+
+/* AUDIT SCREEN */
+.audit-wrap { padding: 12px; padding-bottom: 100px; }
+.audit-hero { background: var(--blue-dark); color: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+.audit-hero h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.audit-hero p { font-size: 12px; opacity: 0.75; }
+.compliance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.comp-card { background: white; border-radius: 10px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.comp-pct { font-size: 22px; font-weight: 700; }
+.comp-pct.green { color: var(--green); }
+.comp-pct.amber { color: var(--amber); }
+.comp-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.audit-table { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+.audit-table-hd { background: var(--gray-light); display: grid; grid-template-columns: 1fr 2fr 1fr; padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--text-muted); }
+.audit-table-row { display: grid; grid-template-columns: 1fr 2fr 1fr; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 12px; align-items: center; }
+.audit-table-row:last-child { border-bottom: none; }
+
+/* BOTTOM NAV */
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); display: flex; padding: 8px 0 12px; z-index: 50; max-width: 480px; margin: 0 auto; }
+.nav-item { flex: 1; text-align: center; cursor: pointer; font-size: 10px; color: var(--text-muted); padding: 4px 0; }
+.nav-item .nav-icon { font-size: 22px; display: block; margin-bottom: 2px; }
+.nav-item.active { color: var(--blue); }
+
+/* SCAN MODAL */
+.scan-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: flex-end; z-index: 200; }
+.scan-modal.open { display: flex; }
+.scan-sheet { background: white; width: 100%; border-radius: 16px 16px 0 0; padding: 20px 16px 40px; }
+.scan-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+.scan-anim { text-align: center; padding: 20px; }
+.scan-anim .icon { font-size: 56px; margin-bottom: 12px; }
+.scan-status { font-size: 14px; color: var(--text-muted); }
+.scan-progress { height: 4px; background: var(--gray-light); border-radius: 2px; overflow: hidden; margin: 12px 0; }
+.scan-bar { height: 100%; background: var(--blue); border-radius: 2px; width: 0; transition: width 1.2s ease; }
+.scan-simulate-btn { width: 100%; background: var(--blue); color: white; border: none; border-radius: 10px; padding: 14px; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+.scan-cancel { width: 100%; background: var(--gray-light); color: var(--text); border: none; border-radius: 10px; padding: 12px; font-size: 14px; cursor: pointer; margin-top: 8px; }
+
+/* TOAST */
+.toast { position: fixed; top: 70px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 999; display: none; white-space: nowrap; }
+.toast.show { display: block; }
+
+/* Scrollable detail */
+.detail-scroll { overflow-y: auto; height: calc(100vh - 60px); padding-bottom: 80px; }
+
+/* GOOGLE SHEET STATUS */
+.sheet-status { margin: 0 12px 8px; background: white; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 8px; font-size: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- SCAN MODAL -->
+<div class="scan-modal" id="scanModal">
+  <div class="scan-sheet">
+    <div class="scan-handle"></div>
+    <div class="scan-anim">
+      <div class="icon">📡</div>
+      <p class="scan-status" id="scanStatus">對準RFID標籤，按下掃描</p>
+      <div class="scan-progress"><div class="scan-bar" id="scanBar"></div></div>
+      <p style="font-size:10px;color:#94a3b8;">UHF RFID · 902-928 MHz</p>
+    </div>
+    <button class="scan-simulate-btn" onclick="doScan()">📡 掃描 RFID 標籤</button>
+    <button class="scan-cancel" onclick="closeModal()">取消</button>
+  </div>
+</div>
+
+<!-- HOME SCREEN -->
+<div class="screen active" id="homeScreen">
+  <div class="topbar">
+    <div>
+      <div class="logo">MiC MAS IM8</div>
+      <h1>預製件追蹤系統</h1>
+    </div>
+    <div class="time" id="clock"></div>
+  </div>
+  <div class="home-hero">
+    <div class="project">工程：B0197 永耀潭尾機械倉及測試中心</div>
+    <h2>鴻輝預製件有限公司</h2>
+    <div class="subtitle">Dongguan Orientfunds Construction Material Products Co., Ltd</div>
+    <div class="im8-badge">🛡️ BTRI-MiC MAS IM8 合規</div>
+  </div>
+
+  <div class="stats-row" id="statsRow">
+    <div class="stat-box"><div class="stat-num blue" id="statTotal">—</div><div class="stat-lbl">總件數</div></div>
+    <div class="stat-box"><div class="stat-num amber" id="statProgress">—</div><div class="stat-lbl">生產中</div></div>
+    <div class="stat-box"><div class="stat-num red" id="statIssue">—</div><div class="stat-lbl">待跟進</div></div>
+  </div>
+
+  <div id="sheetStatusBar" class="sheet-status" style="margin-top:10px;">
+    <span class="status-dot dot-gray" id="sheetDot"></span>
+    <span id="sheetStatusText">未連接 Google Sheet</span>
+    <button class="test-btn" onclick="switchTab('settings')" style="margin-left:auto;">設定</button>
+  </div>
+
+  <div class="section-hd">掃描構件</div>
+  <div class="scan-wrap">
+    <div class="scan-box" onclick="openScanModal()">
+      <div class="scan-icon">🔍</div>
+      <p>點擊啟動 RFID 掃描</p>
+      <small>對準標籤讀取 EPC 編號</small>
+    </div>
+  </div>
+  <div class="manual-input">
+    <input type="text" id="manualInput" placeholder="或輸入構件編號 / EPC..." />
+    <button onclick="manualSearch()">查詢</button>
+  </div>
+
+  <div class="section-hd">最近記錄</div>
+  <div class="item-list" id="recentList">
+    <div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px;">載入中...</div>
+  </div>
+</div>
+
+<!-- DETAIL SCREEN -->
+<div class="screen" id="detailScreen">
+  <div class="topbar">
+    <button class="back-btn" onclick="goBack()">‹ 返回</button>
+    <h1 id="detailTopTitle">構件詳情</h1>
+  </div>
+  <div class="detail-scroll" id="detailContent"></div>
+</div>
+
+<!-- AUDIT SCREEN -->
+<div class="screen" id="auditScreen">
+  <div class="topbar"><h1>MAS 審核報告</h1></div>
+  <div class="audit-wrap" id="auditContent">
+    <div class="audit-hero">
+      <h3>🛡️ IM8 數字技術應用合規</h3>
+      <p>RFID追蹤 + 數字檢查記錄 + 電子化流程</p>
+    </div>
+    <div class="compliance-grid" id="complianceGrid">
+      <div class="comp-card"><div class="comp-pct green" id="cRfid">—</div><div class="comp-label">RFID標籤率</div></div>
+      <div class="comp-card"><div class="comp-pct green" id="cRecord">—</div><div class="comp-label">記錄完整率</div></div>
+      <div class="comp-card"><div class="comp-pct amber" id="cQC">—</div><div class="comp-label">QC完成率</div></div>
+      <div class="comp-card"><div class="comp-pct green" id="cShip">—</div><div class="comp-label">出廠驗收率</div></div>
+    </div>
+    <div class="section-hd" style="padding-left:0;">工序完成統計</div>
+    <div class="audit-table" id="auditTable">
+      <div class="audit-table-hd"><span>工序</span><span>完成情況</span><span>完成率</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS SCREEN -->
+<div class="screen" id="settingsScreen">
+  <div class="topbar"><h1>系統設定</h1></div>
+  <div class="settings-wrap">
+    <div class="settings-card">
+      <div class="card-title">Google Sheet 數據來源</div>
+      <div class="settings-row">
+        <span>Sheet ID</span>
+        <input type="text" id="sheetId" placeholder="貼上 Google Sheet ID" />
+      </div>
+      <div class="settings-row">
+        <span>API Key</span>
+        <input type="text" id="apiKey" placeholder="Google API Key" />
+      </div>
+      <div class="settings-row">
+        <span>連接狀態</span>
+        <span id="connStatus"><span class="status-dot dot-gray"></span>未連接</span>
+      </div>
+      <div style="padding:12px 14px;">
+        <button class="test-btn" onclick="testConnection()" style="width:100%;margin-bottom:8px;">測試連接</button>
+        <button class="save-btn" onclick="saveSettings()">儲存設定</button>
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="card-title">Google Sheet 格式說明</div>
+      <div style="padding:12px 14px;font-size:12px;color:var(--text-muted);line-height:1.8;">
+        <p><strong>Sheet 1 (構件主表)</strong> - 每行一件：</p>
+        <p>A: EPC編號 | B: 構件編號 | C: 類型 | D: 模號</p>
+        <p>E: 座/樓/房 | F: QC負責人 | G: 整體狀態</p>
+        <br>
+        <p><strong>Sheet 2 (工序記錄)</strong>：</p>
+        <p>A: 構件編號 | B: 工序名稱 | C: 開工日期</p>
+        <p>D: 完成日期 | E: 質量情況 | F: 生產部簽名</p>
+        <p>G: 品質組簽名 | H: 備註</p>
+        <br>
+        <p><strong>Sheet 3 (QPM01落石矢)</strong>：</p>
+        <p>A: 構件編號 | B: 檢查日期 | C: 模號</p>
+        <p>D: 整體合格 | E-Z: 各檢查項目結果</p>
+        <br>
+        <button onclick="copySheetTemplate()" style="background:var(--blue-light);color:var(--blue);border:none;border-radius:6px;padding:8px 14px;font-size:12px;cursor:pointer;width:100%;">📋 複製範本格式</button>
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="card-title">Demo 數據</div>
+      <div style="padding:12px 14px;">
+        <button onclick="loadDemoData()" style="background:var(--blue-light);color:var(--blue);border:none;border-radius:8px;padding:10px;font-size:13px;cursor:pointer;width:100%;font-weight:600;">載入Demo數據（測試用）</button>
+      </div>
+    </div>
+
+    <div class="settings-card">
+      <div class="card-title">關於</div>
+      <div class="settings-row"><span>系統版本</span><span>v1.0.0</span></div>
+      <div class="settings-row"><span>工程</span><span>B0197</span></div>
+      <div class="settings-row"><span>合規標準</span><span>BTRI-MiC MAS IM8</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="nav-item active" id="nav-home" onclick="switchTab('home')"><span class="nav-icon">🏠</span>主頁</div>
+  <div class="nav-item" id="nav-scan" onclick="openScanModal()"><span class="nav-icon">📡</span>掃描</div>
+  <div class="nav-item" id="nav-audit" onclick="switchTab('audit')"><span class="nav-icon">🛡️</span>審核</div>
+  <div class="nav-item" id="nav-settings" onclick="switchTab('settings')"><span class="nav-icon">⚙️</span>設定</div>
+</div>
+
+<script>
+// ===== STATE =====
+let db = { items: [], processes: [], qpm: [] };
+let settings = { sheetId: '', apiKey: '' };
+let currentItem = null;
+
+// ===== DEMO DATA based on actual documents =====
+const DEMO_ITEMS = [
+  { epc:'E28011606000020750D0C6F1', id:'GL-28', type:'衛生間', model:'WC01', unit:'B0197', qc:'健(品質組)', status:'done' },
+  { epc:'E28011606000020750D0C6F2', id:'GL-44', type:'衛生間', model:'M3', unit:'B0197', qc:'健(品質組)', status:'done' },
+  { epc:'E28011606000020750D0C6F3', id:'GL-12', type:'衛生間', model:'M2', unit:'B0197', qc:'健(品質組)', status:'done' },
+  { epc:'E28011606000020750D0C6F4', id:'GL-11', type:'衛生間', model:'M1', unit:'B0197', qc:'健(品質組)', status:'done' },
+  { epc:'E28011606000020750D0C6F5', id:'GL-10', type:'衛生間', model:'M3', unit:'B0197', qc:'健(品質組)', status:'done' },
+  { epc:'E28011606000020750D0C6F6', id:'B2', type:'辦公室', model:'B2', unit:'B0197', qc:'健(品質組)', status:'done' },
+  { epc:'E28011606000020750D0C6F7', id:'B4', type:'辦公室', model:'B4', unit:'B0197', qc:'健(品質組)', status:'done' },
+  { epc:'E28011606000020750D0C6F8', id:'A3', type:'辦公室', model:'A3', unit:'B0197', qc:'健(品質組)', status:'progress' },
+  { epc:'E28011606000020750D0C6F9', id:'A5', type:'辦公室', model:'A5', unit:'B0197', qc:'健(品質組)', status:'progress' },
+  { epc:'E28011606000020750D0C700', id:'A7', type:'辦公室', model:'A7', unit:'B0197', qc:'健(品質組)', status:'done' },
+];
+
+// Based on actual GL-28 flow record from image
+const DEMO_GL28_PROCESSES = [
+  { step:'紮鐵', complete_date:'27-03-2025 10:11', staff:'梁業沂·吳揚揚', pass:true, note:'' },
+  { step:'扎鐵檢查', complete_date:'27-03-2025 10:11', staff:'梁業沂(合格)', pass:true, note:'' },
+  { step:'裝模', complete_date:'11-04-2025 14:42', staff:'黃啟榮', pass:true, note:'' },
+  { step:'裝模(模具)檢查', complete_date:'11-04-2025 14:43', staff:'聶紅健(合格)', pass:true, note:'' },
+  { step:'裝模(施工1)檢查', complete_date:'11-04-2025 14:43', staff:'聶紅健(合格)', pass:true, note:'' },
+  { step:'裝模(施工2)檢查', complete_date:'11-04-2025 14:43', staff:'聶紅健(合格)', pass:true, note:'' },
+  { step:'落石矢', complete_date:'11-04-2025 17:03', staff:'聶紅健·斤先帶', pass:true, note:'C30混凝土' },
+  { step:'落石矢檢查', complete_date:'11-04-2025 17:03', staff:'聶紅健(合格)', pass:true, note:'' },
+  { step:'軌面養護', complete_date:'11-04-2025 17:04', staff:'聶紅健', pass:true, note:'' },
+  { step:'拆模', complete_date:'14-04-2025 08:24', staff:'聶紅健', pass:true, note:'' },
+  { step:'修補(內)', complete_date:'21-06-2025 15:40', staff:'王偉·鴻燿', pass:true, note:'' },
+  { step:'修補(內)檢查', complete_date:'21-06-2025 15:41', staff:'王偉(合格)', pass:true, note:'' },
+  { step:'修補(外)', complete_date:'21-06-2025 15:41', staff:'王偉·鴻燿', pass:true, note:'' },
+  { step:'石矢綠點', complete_date:'21-06-2025 15:41', staff:'王偉', pass:true, note:'' },
+  { step:'防水', complete_date:'21-06-2025 15:42', staff:'王偉·鴻燿', pass:true, note:'' },
+  { step:'防水檢查', complete_date:'21-06-2025 15:42', staff:'王偉(合格)', pass:true, note:'' },
+  { step:'泥水', complete_date:'21-06-2025 15:42', staff:'王偉·鴻燿', pass:true, note:'' },
+  { step:'泥水檢查', complete_date:'21-06-2025 15:43', staff:'王偉(合格)', pass:true, note:'' },
+  { step:'外牆', complete_date:'21-06-2025 15:43', staff:'王偉·鴻燿', pass:true, note:'' },
+  { step:'外牆檢查', complete_date:'21-06-2025 15:43', staff:'王偉(合格)', pass:true, note:'' },
+  { step:'機電', complete_date:'21-06-2025 15:44', staff:'王偉·鴻燿', pass:true, note:'' },
+  { step:'機電檢查', complete_date:'21-06-2025 15:44', staff:'王偉(合格)', pass:true, note:'' },
+  { step:'室內裝修', complete_date:'21-06-2025 15:44', staff:'王偉·鴻燿', pass:true, note:'' },
+  { step:'室內裝修檢查', complete_date:'21-06-2025 15:44', staff:'王偉(合格)', pass:true, note:'' },
+  { step:'門窗', complete_date:'21-06-2025 15:45', staff:'王偉·鴻燿', pass:true, note:'' },
+  { step:'門窗檢查', complete_date:'21-06-2025 15:45', staff:'王偉(合格)', pass:true, note:'' },
+  { step:'保護', complete_date:'21-06-2025 15:45', staff:'王偉·鴻燿', pass:true, note:'' },
+  { step:'保護檢查', complete_date:'21-06-2025 15:46', staff:'王偉(合格)', pass:true, note:'' },
+  { step:'成品質檢', complete_date:'21-06-2025 16:00', staff:'布澤新·不抽檢', pass:true, note:'' },
+  { step:'保護質驗', complete_date:'21-06-2025 16:00', staff:'布澤新', pass:true, note:'' },
+  { step:'藍點', complete_date:'21-06-2025 16:01', staff:'布澤新', pass:true, note:'出廠就緒' },
+];
+
+// QPM01 data based on GL-44 actual record
+const DEMO_QPM = {
+  'GL-28': { date:'14/08/2025', model:'M3', pass:true, items:[
+    ['模具清潔,明暗角','✓'],['板面平直,板縫','✓'],['裝頂/威吟','✓'],
+    ['尺寸厚度,墻開埋','✓'],['緩凝劑,位置','✓'],['沒有多餘模油','✓'],
+    ['1落石矢質量','✓'],['平整度-軌面','✓'],['平整度-墩模面','✓'],
+    ['尺寸差距長','✓'],['尺寸差距厚','✓'],['尺寸差距高','✓'],
+    ['整體合格','✓ PASS'],
+  ]},
+  'GL-44': { date:'14/08/2025', model:'M3', pass:true, items:[
+    ['模具清潔,明暗角','✓'],['板面平直,板縫','✓'],['1落石矢質量','✓'],
+    ['平整度-軌面','✓'],['平整度-墩模面','✓'],['沒有崩邊,崩角','✓'],
+    ['開墨檢查明暗角','✓'],['牆身及天花平整','✓'],['整體合格','✓ PASS'],
+  ]},
+};
+
+function loadDemoData() {
+  db.items = DEMO_ITEMS;
+  renderRecentList();
+  updateStats();
+  renderAudit();
+  updateSheetStatus(true, 'Demo數據已載入');
+  showToast('✅ Demo數據已載入');
+  switchTab('home');
+}
+
+// ===== GOOGLE SHEETS INTEGRATION =====
+async function fetchFromSheet() {
+  const id = settings.sheetId;
+  const key = settings.apiKey;
+  if (!id || !key) { showToast('請先設定 Sheet ID 及 API Key'); return false; }
+  try {
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet1?key=${key}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const rows = data.values || [];
+    db.items = rows.slice(1).map(r => ({
+      epc: r[0]||'', id: r[1]||'', type: r[2]||'', model: r[3]||'',
+      unit: r[4]||'', qc: r[5]||'', status: r[6]||'progress'
+    }));
+    // Fetch processes
+    const url2 = `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Sheet2?key=${key}`;
+    const res2 = await fetch(url2);
+    const data2 = await res2.json();
+    db.processes = (data2.values||[]).slice(1).map(r => ({
+      itemId: r[0]||'', step: r[1]||'', start: r[2]||'', complete_date: r[3]||'',
+      pass: (r[4]||'').includes('✓'), staff: r[5]||'', qcStaff: r[6]||'', note: r[7]||''
+    }));
+    renderRecentList(); updateStats(); renderAudit();
+    updateSheetStatus(true, `已連接 · ${db.items.length} 件`);
+    return true;
+  } catch(e) {
+    updateSheetStatus(false, '連接失敗: ' + e.message);
+    return false;
+  }
+}
+
+async function testConnection() {
+  document.getElementById('connStatus').innerHTML = '<span class="status-dot dot-gray"></span>測試中...';
+  const ok = await fetchFromSheet();
+  document.getElementById('connStatus').innerHTML = ok
+    ? '<span class="status-dot dot-green"></span>連接成功'
+    : '<span class="status-dot dot-red"></span>連接失敗';
+}
+
+function updateSheetStatus(ok, msg) {
+  document.getElementById('sheetDot').className = 'status-dot ' + (ok ? 'dot-green' : 'dot-red');
+  document.getElementById('sheetStatusText').textContent = msg;
+}
+
+function saveSettings() {
+  settings.sheetId = document.getElementById('sheetId').value.trim();
+  settings.apiKey = document.getElementById('apiKey').value.trim();
+  localStorage.setItem('mic_settings', JSON.stringify(settings));
+  showToast('✅ 設定已儲存');
+  if (settings.sheetId && settings.apiKey) fetchFromSheet();
+}
+
+function copySheetTemplate() {
+  const t = `EPC編號\t構件編號\t類型\t模號\t工程/座號\tQC負責人\t整體狀態
+E28011606000020750D0C6F1\tGL-28\t衛生間\tWC01\tB0197\t健(品質組)\tdone`;
+  navigator.clipboard.writeText(t).then(() => showToast('✅ 已複製範本'));
+}
+
+// ===== RENDER =====
+function renderRecentList() {
+  const el = document.getElementById('recentList');
+  if (!db.items.length) { el.innerHTML = '<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px;">暫無數據 · 請設定 Google Sheet 或載入Demo</div>'; return; }
+  el.innerHTML = db.items.map(it => `
+    <div class="item-card ${it.status}" onclick="showDetail('${it.id}')">
+      <div class="item-info">
+        <div class="item-id">${it.id} · ${it.type}</div>
+        <div class="item-sub">模號: ${it.model} · QC: ${it.qc}</div>
+      </div>
+      <div class="item-badge ${it.status==='done'?'badge-done':it.status==='fail'?'badge-fail':'badge-progress'}">
+        ${it.status==='done'?'✓ 完成':it.status==='fail'?'✗ 異常':'⏳ 進行中'}
+      </div>
+    </div>`).join('');
+}
+
+function updateStats() {
+  document.getElementById('statTotal').textContent = db.items.length;
+  document.getElementById('statProgress').textContent = db.items.filter(i=>i.status==='progress').length;
+  document.getElementById('statIssue').textContent = db.items.filter(i=>i.status==='fail').length;
+}
+
+function showDetail(id) {
+  const item = db.items.find(i=>i.id===id);
+  if (!item) { showToast('找不到構件: '+id); return; }
+  currentItem = item;
+  document.getElementById('detailTopTitle').textContent = id;
+
+  // Get processes for this item
+  let procs = db.processes.filter(p=>p.itemId===id);
+  if (!procs.length && id==='GL-28') procs = DEMO_GL28_PROCESSES.map(p=>({...p, itemId:'GL-28'}));
+
+  // QPM data
+  const qpm = DEMO_QPM[id] || null;
+
+  const el = document.getElementById('detailContent');
+  el.innerHTML = `
+    <div class="detail-header">
+      <div class="epc">EPC: ${item.epc || '待掃描'}</div>
+      <h2>${item.id} · ${item.type}</h2>
+      <div class="type">模號: ${item.model} · 工程: ${item.unit}</div>
+      <div class="overall">
+        <span class="overall-lbl">MiC IM8 數字追蹤記錄</span>
+        <span class="${item.status==='done'?'overall-pass':'overall-progress'}">${item.status==='done'?'✓ PASS':'進行中'}</span>
+      </div>
+    </div>
+
+    <div class="section-hd" style="margin-top:4px;">構件資料</div>
+    <div class="info-block">
+      <div class="info-row"><span class="lbl">EPC編號</span><span class="val blue">${item.epc||'待掃描'}</span></div>
+      <div class="info-row"><span class="lbl">構件編號</span><span class="val">${item.id}</span></div>
+      <div class="info-row"><span class="lbl">類型</span><span class="val">${item.type}</span></div>
+      <div class="info-row"><span class="lbl">模號</span><span class="val">${item.model}</span></div>
+      <div class="info-row"><span class="lbl">QC負責人</span><span class="val">${item.qc}</span></div>
+    </div>
+
+    <div class="section-hd">生產工序記錄</div>
+    <div class="timeline">
+      ${procs.length ? procs.map((p,i)=>`
+        <div class="timeline-item">
+          <div class="tl-left">
+            <div class="tl-dot ${p.pass?'done':'fail'}">${p.pass?'✓':'✗'}</div>
+            ${i<procs.length-1?'<div class="tl-line"></div>':''}
+          </div>
+          <div class="tl-content">
+            <div class="tl-title">${p.step}</div>
+            <div class="tl-meta">
+              <span>📅 ${p.complete_date}</span>
+              <span>👷 ${p.staff}</span>
+            </div>
+            ${p.note?`<div style="font-size:11px;color:#64748b;margin-top:3px;">📝 ${p.note}</div>`:''}
+            ${p.qcStaff?`<div class="tl-expand" onclick="toggleDetail(this)">▼ 查看詳細</div>
+            <div class="tl-detail">
+              <div class="tl-detail-row"><span class="k">品質組</span><span class="v">${p.qcStaff}</span></div>
+              <div class="tl-detail-row"><span class="k">質量情況</span><span class="v ${p.pass?'v-pass':'v-fail'}">${p.pass?'✓ 合格':'✗ 不合格'}</span></div>
+            </div>`:''}
+          </div>
+        </div>`).join('') : '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:13px;">暫無工序記錄</div>'}
+    </div>
+
+    ${qpm?`
+    <div class="section-hd">QPM01 落石矢及拆模後檢查</div>
+    <div class="qpm-card">
+      <div class="qpm-header">
+        <span>📋 落石矢前及拆模後檢查 · ${qpm.date}</span>
+        <span class="result ${qpm.pass?'qpm-result-pass':'qpm-result-fail'}">${qpm.pass?'PASS':'FAIL'}</span>
+      </div>
+      ${qpm.items.map(it=>`<div class="qpm-row"><span>${it[0]}</span><span class="${it[1].includes('✓')?'v-pass':'v-fail'}">${it[1]}</span></div>`).join('')}
+    </div>`:''}
+
+    <div class="section-hd">圖紙及文件</div>
+    <div class="doc-item"><span class="doc-icon">📄</span><div><div class="doc-name">${item.id} 施工圖紙</div><div class="doc-meta">Rev.最新 · MiC標準</div></div></div>
+    <div class="doc-item"><span class="doc-icon">📋</span><div><div class="doc-name">項目檢查記錄表 (52項)</div><div class="doc-meta">開工至完成 · 已簽署</div></div></div>
+    <div class="doc-item"><span class="doc-icon">📊</span><div><div class="doc-name">QPM01 落石矢檢查表</div><div class="doc-meta">鴻輝預製件 · 已簽署</div></div></div>
+  `;
+
+  document.getElementById('detailScreen').classList.add('active');
+  document.getElementById('homeScreen').classList.remove('active');
+}
+
+function toggleDetail(el) {
+  const d = el.nextElementSibling;
+  if (d) { d.classList.toggle('open'); el.textContent = d.classList.contains('open')?'▲ 收起':'▼ 查看詳細'; }
+}
+
+function renderAudit() {
+  const total = db.items.length || 10;
+  const done = db.items.filter(i=>i.status==='done').length || 8;
+  document.getElementById('cRfid').textContent = total?'100%':'—';
+  document.getElementById('cRecord').textContent = total?Math.round(done/total*100)+'%':'—';
+  document.getElementById('cQC').textContent = total?'100%':'—';
+  document.getElementById('cShip').textContent = total?Math.round(done/total*100)+'%':'—';
+
+  const steps = ['紮鐵/扎鐵','裝模','落石矢','養護','拆模','修補','防水','泥水','外牆','機電','室內裝修','門窗','成品質驗'];
+  const tbl = document.getElementById('auditTable');
+  const rows = steps.map(s=>`
+    <div class="audit-table-row">
+      <span>${s}</span>
+      <span style="color:#64748b;font-size:11px;">${done}/${total} 件完成</span>
+      <span style="color:${done===total?'#1a7a3c':'#b45309'};font-weight:600;">${total?Math.round(done/total*100)+'%':'—'}</span>
+    </div>`).join('');
+  tbl.innerHTML = '<div class="audit-table-hd"><span>工序</span><span>完成情況</span><span>完成率</span></div>' + rows;
+}
+
+// ===== SCAN =====
+function openScanModal() { document.getElementById('scanModal').classList.add('open'); }
+function closeModal() { document.getElementById('scanModal').classList.remove('open'); }
+
+function doScan() {
+  document.getElementById('scanStatus').textContent = '正在讀取EPC...';
+  const bar = document.getElementById('scanBar');
+  bar.style.width = '0'; setTimeout(()=>{bar.style.width='100%';},50);
+  // Simulate reading - pick first item's EPC
+  setTimeout(()=>{
+    closeModal();
+    const target = db.items.length ? db.items[0] : {id:'GL-28',type:'衛生間',model:'WC01',unit:'B0197',qc:'健',status:'done',epc:'E28011606000020750D0C6F1'};
+    showToast('✅ 讀取成功: '+target.id);
+    setTimeout(()=>showDetail(target.id), 400);
+    bar.style.width = '0';
+    document.getElementById('scanStatus').textContent = '對準RFID標籤，按下掃描';
+  }, 1400);
+}
+
+function manualSearch() {
+  const v = document.getElementById('manualInput').value.trim().toUpperCase();
+  if (!v) return;
+  const found = db.items.find(i=>i.id.toUpperCase()===v || i.epc===v || i.id.toUpperCase().includes(v));
+  if (found) { showDetail(found.id); document.getElementById('manualInput').value=''; }
+  else showToast('找不到: '+v);
+}
+
+// ===== NAV =====
+function switchTab(tab) {
+  ['home','audit','settings'].forEach(t=>{
+    document.getElementById(t+'Screen').classList.toggle('active', t===tab);
+    const n = document.getElementById('nav-'+t);
+    if(n) n.classList.toggle('active', t===tab);
+  });
+  document.getElementById('detailScreen').classList.remove('active');
+}
+
+function goBack() {
+  document.getElementById('detailScreen').classList.remove('active');
+  document.getElementById('homeScreen').classList.add('active');
+}
+
+// ===== UTILS =====
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+function updateClock() {
+  const n = new Date();
+  document.getElementById('clock').textContent = n.toLocaleTimeString('zh-HK',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ===== INIT =====
+window.onload = ()=>{
+  updateClock(); setInterval(updateClock, 30000);
+  // 真實 Google Sheet 設定（已預設）
+  settings.sheetId = '1cPy4unpkBOAjYFxa2nYy5hx1RKDMmgwHTU77FL7NA8I';
+  settings.apiKey  = 'AIzaSyAG0FY34JOChX9QnUX_88VgcErUVc3QN6o';
+  document.getElementById('sheetId').value = settings.sheetId;
+  document.getElementById('apiKey').value  = settings.apiKey;
+  // 自動連接 Google Sheet
+  fetchFromSheet();
+  renderAudit();
+};
+</script>
+</body>
+</html>
